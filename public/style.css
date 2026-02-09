@@ -1,0 +1,191 @@
+/* public/style.css */
+
+body {
+    background-color: #181818;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Controls */
+.scanner-controls {
+    display: flex;
+    gap: 20px;
+    background: #222;
+    padding: 20px;
+    border-radius: 8px;
+    align-items: flex-end;
+    margin-bottom: 20px;
+    border: 1px solid #333;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.control-group label {
+    font-size: 0.85rem;
+    color: #aaa;
+    margin-bottom: 8px;
+}
+
+select {
+    background: #333;
+    border: 1px solid #444;
+    color: #fff;
+    padding: 10px 15px;
+    border-radius: 4px;
+    min-width: 200px;
+    font-size: 1rem;
+}
+
+.scan-btn {
+    background: #5d4037; /* Brownish tone like screenshot */
+    color: white;
+    border: none;
+    padding: 11px 25px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background 0.2s;
+}
+.scan-btn:hover { background: #795548; }
+
+/* Table */
+.table-wrapper {
+    background: #1e1e1e;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+
+.dark-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.dark-table th {
+    background: #252525;
+    padding: 15px;
+    text-align: left;
+    font-weight: normal;
+    color: #aaa;
+    border-bottom: 2px solid #333;
+    font-size: 0.9rem;
+}
+
+.dark-table td {
+    padding: 15px;
+    border-bottom: 1px solid #2a2a2a;
+    vertical-align: top;
+    font-size: 0.95rem;
+}
+
+/* Cell Specifics */
+.item-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.item-row { display: flex; align-items: center; gap: 8px; }
+.tier-tag { font-family: monospace; color: #888; font-size: 0.85rem; }
+.highlight { color: #d4a017; /* Gold for upgraded item */ }
+.arrow-icon { color: #444; font-size: 0.8rem; margin: 4px 0 4px 20px; }
+
+.price-block { display: flex; flex-direction: column; gap: 4px; }
+.location { font-size: 0.8rem; color: #777; }
+.price { font-weight: bold; color: #eee; }
+.price.warning { color: #ffcc80; /* Orange for BM prices */ }
+
+.materials-list { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; }
+.mat-row { display: flex; justify-content: space-between; color: #bbb; }
+.mat-price { color: #888; margin-left: 10px; }
+
+.cost-cell { font-family: monospace; color: #aaa; }
+.profit-cell { font-family: monospace; font-size: 1.1rem; color: #fff; }
+.profit-cell.muted { color: #888; } /* Non-premium dimmer */
+
+/* Pagination */
+.pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 0;
+    color: #777;
+}
+
+.page-buttons button {
+    background: #333;
+    border: none;
+    color: white;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 5px;
+}
+.page-buttons button:disabled { opacity: 0.5; cursor: not-allowed; }    
+
+/* Add to style.css */
+.strategy-block {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+.mini-mat {
+    font-size: 0.75rem;
+    color: #666;
+}
+.mat-prices {
+    margin-top: 4px;
+    border-top: 1px solid #333;
+    padding-top: 4px;
+}
+
+/* Add to bottom of style.css */
+.mat-row-detail {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    padding: 2px 0;
+    border-bottom: 1px solid #333;
+}
+.mat-row-detail:last-child {
+    border-bottom: none;
+}
+.mat-name { color: #aaa; }
+.mat-cost { color: #e0e0e0; font-family: monospace; }
+.strategy-badge {
+    font-size: 0.8rem;
+    background: #333;
+    padding: 4px 8px;
+    border-radius: 4px;
+    color: #00d2ff;
+}
+
+/* Quality Badge Styling */
+.quality-row {
+    margin-left: 2px;
+    margin-bottom: 2px;
+}
+.quality-badge {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid #444;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+/* Quality Colors */
+.q-normal { color: #aaa; border-color: #555; }
+.q-good { color: #5eff5e; border-color: #2a552a; }        /* Green */
+.q-outstanding { color: #5eabff; border-color: #2a3d55; }  /* Blue */
+.q-excellent { color: #c45eff; border-color: #4b2a55; }    /* Purple */
+.q-masterpiece { color: #ffd700; border-color: #b8860b; }  /* Gold */

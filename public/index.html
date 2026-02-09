@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Albion Market Scanner</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        
+        <div class="scanner-controls">
+            <div class="control-group">
+                <label>Buy City</label>
+                <select id="citySelect">
+                    <option value="Martlock">Martlock</option>
+                    <option value="Bridgewatch">Bridgewatch</option>
+                    <option value="Lymhurst">Lymhurst</option>
+                    <option value="Fort Sterling">Fort Sterling</option>
+                    <option value="Thetford">Thetford</option>
+                    <option value="Caerleon">Caerleon</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Category</label>
+                <select id="categorySelect">
+                    <option value="1H_WEAPON">1H Weapon</option>
+                    <option value="2H_WEAPON">2H Weapon</option>
+                    <option value="ARMOR">Armor / Plate</option>
+                    <option value="OFF_HAND">Off-Hand</option>
+                </select>
+            </div>
+
+            <button onclick="startScan()" class="scan-btn">
+                <i class="fas fa-search"></i> Analyze Market
+            </button>
+        </div>
+
+        <div class="table-wrapper">
+            <table class="dark-table">
+                <thead>
+                    <tr>
+                        <th style="width: 20%">Item Name</th>
+                        <th style="width: 10%">Buy At</th>
+                        <th style="width: 10%">Sell At</th>
+                        <th style="width: 15%">Strategy</th>
+                        <th style="width: 20%">Materials Required</th> <th style="width: 10%">Total Upg. Cost</th>
+                        <th style="width: 10%">Profit (Prem)</th>
+                        <th style="width: 10%">Profit (No-Prem)</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsBody">
+                    <tr><td colspan="8" class="empty-state">Select a category and click Analyze</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination">
+            <span id="pageInfo">Showing 0-0 of 0</span>
+            <div class="page-buttons">
+                <button onclick="changePage(-1)" id="prevBtn" disabled>Previous</button>
+                <button onclick="changePage(1)" id="nextBtn" disabled>Next</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
