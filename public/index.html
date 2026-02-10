@@ -27,6 +27,9 @@
                 <button onclick="startBatchScan()" class="scan-btn">
                     <i class="fas fa-search"></i> Scan All Markets
                 </button>
+                <button onclick="verifyCurrentItems()" class="refresh-btn">
+                    <i class="fas fa-sync-alt"></i> Refresh Prices
+                </button>
                 <button onclick="resetHidden()" class="reset-btn">
                     <i class="fas fa-trash-restore"></i> Show Hidden
                 </button>
@@ -66,19 +69,25 @@
                 <thead>
                     <tr>
                         <th style="width: 25%">Item Name</th>
-                        <th style="width: 10%">Buy At</th>
-                        <th style="width: 10%">Sell At</th>
+                        <th style="width: 9%">Buy At</th>
+                        <th style="width: 9%">Sell At</th>
                         <th style="width: 10%">Strategy</th>
-                        <th style="width: 20%">Materials</th>
+                        <th style="width: 17%">Materials</th>
                         <th style="width: 8%">Cost</th>
-                        <th style="width: 8%; cursor:pointer;" onclick="toggleSort()">
-                            Profit (Prem) <i class="fas fa-sort" id="sortIcon"></i>
+                        
+                        <th style="width: 9%; cursor:pointer;" onclick="handleSort('profitPrem')">
+                            Profit (Prem) <i class="fas fa-sort-down" id="icon-profitPrem"></i>
                         </th>
-                        <th style="width: 5%">Actions</th>
+                        
+                        <th style="width: 9%; cursor:pointer;" onclick="handleSort('profitNonPrem')">
+                            Profit (No-Prem) <i class="fas fa-sort" id="icon-profitNonPrem" style="color: #444;"></i>
+                        </th>
+
+                        <th style="width: 4%">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="resultsBody">
-                    <tr><td colspan="8" class="empty-state">Click "Scan All Markets" to begin.</td></tr>
+                    <tr><td colspan="9" class="empty-state">Click "Scan All Markets" to begin.</td></tr>
                 </tbody>
             </table>
         </div>

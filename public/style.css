@@ -248,3 +248,16 @@ button:disabled {
     background: #333;
     margin-left: 5px;
 }
+
+/* Ensure the non-premium profit cell is visible but distinct */
+.profit-cell.muted {
+    color: #999; /* Grey text */
+    font-size: 1rem; /* Slightly smaller than premium profit */
+}
+
+/* Ensure icons in headers align nicely */
+th i {
+    margin-left: 5px;
+    font-size: 0.9rem;
+    vertical-align: middle;
+}

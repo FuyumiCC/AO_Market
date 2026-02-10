@@ -3,17 +3,15 @@
 let allResults = [];      
 let filteredResults = []; 
 let currentPage = 1;
-
-// --- CHANGE THIS VALUE ---
 const ITEMS_PER_PAGE = 50; 
-// -------------------------
 
 let itemLookup = {}; 
-let sortDescending = true; 
+
+// --- SORTING STATE ---
+let sortColumn = 'profitPrem'; // Default sort column
+let sortDescending = true;     // Default High-to-Low
 let hiddenItems = new Set(); 
 
-
-// The categories to scan in batch
 const SCAN_CATEGORIES = ['1H_WEAPON', '2H_WEAPON', 'ARMOR', 'OFF_HAND'];
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -21,12 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
     loadHiddenItems();
 });
 
-// --- HELPER: Detect Item Type from ID ---
 function getItemType(id) {
-    // Standardize ID string
     const s = id.toUpperCase();
-    
-    // Weapons
     if (s.includes('SWORD') || s.includes('CLAYMORE') || s.includes('GALATINE')) return 'Sword';
     if (s.includes('AXE') || s.includes('SCYTHE') || s.includes('HALBERD')) return 'Axe';
     if (s.includes('MACE')) return 'Mace';
@@ -36,23 +30,16 @@ function getItemType(id) {
     if (s.includes('QSTAFF') || s.includes('QUARTERSTAFF') || s.includes('IRONCLAD') || s.includes('STAFF_COMBAT')) return 'Quarterstaff';
     if (s.includes('BOW')) return 'Bow';
     if (s.includes('CROSSBOW')) return 'Crossbow';
-    
-    // Magic Staffs
     if (s.includes('CURSED')) return 'Cursed Staff';
     if (s.includes('FIRE')) return 'Fire Staff';
     if (s.includes('FROST') || s.includes('ICICLE')) return 'Frost Staff';
     if (s.includes('ARCANE')) return 'Arcane Staff';
     if (s.includes('HOLY')) return 'Holy Staff';
     if (s.includes('NATURE') || s.includes('WILDSTAFF')) return 'Nature Staff';
-
-    // Armor
     if (s.includes('ARMOR_PLATE') || s.includes('HELM_PLATE') || s.includes('SHOES_PLATE')) return 'Plate Armor';
     if (s.includes('ARMOR_LEATHER') || s.includes('HELM_LEATHER') || s.includes('SHOES_LEATHER')) return 'Leather Armor';
     if (s.includes('ARMOR_CLOTH') || s.includes('HELM_CLOTH') || s.includes('SHOES_CLOTH')) return 'Cloth Armor';
-
-    // Offhand
     if (s.includes('OFF_')) return 'Off-Hand';
-
     return 'Other';
 }
 
@@ -96,27 +83,22 @@ function getEnchantTag(id) {
     return '.0';
 }
 
-// --- NEW BATCH SCAN FUNCTION ---
 async function startBatchScan() {
     const city = document.getElementById('citySelect').value;
     const tbody = document.getElementById('resultsBody');
     const btn = document.querySelector('.scan-btn');
     
-    // UI Reset
-    allResults = []; // Clear previous results
+    allResults = []; 
     filteredResults = [];
     currentPage = 1;
     btn.disabled = true;
     
     try {
-        // Loop through all categories defined at top
         for (let i = 0; i < SCAN_CATEGORIES.length; i++) {
             const cat = SCAN_CATEGORIES[i];
-            
-            // Update UI to show progress
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="loading-text" style="text-align:center; padding:30px;">
+                    <td colspan="9" class="loading-text" style="text-align:center; padding:30px;">
                         <i class="fas fa-spinner fa-spin"></i> 
                         Scanning Category ${i + 1}/${SCAN_CATEGORIES.length}: <strong>${cat}</strong>...<br>
                         <small>Found ${allResults.length} profitable items so far.</small>
@@ -124,7 +106,6 @@ async function startBatchScan() {
                 </tr>`;
             btn.innerHTML = `<i class="fas fa-sync fa-spin"></i> Scanning ${i + 1}/${SCAN_CATEGORIES.length}...`;
 
-            // Fetch
             const response = await fetch(`/api/scan-category?city=${city}&category=${cat}`);
             const data = await response.json();
             
@@ -132,16 +113,71 @@ async function startBatchScan() {
                 allResults = allResults.concat(data);
             }
         }
-
-        // Finalize
         applyFiltersAndSort(); 
-
     } catch (error) {
-        tbody.innerHTML = `<tr><td colspan="8" class="error-text" style="text-align:center; color:red;">Error: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="error-text" style="text-align:center; color:red;">Error: ${error.message}</td></tr>`;
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-search"></i> Scan All Markets';
     }
+}
+
+async function verifyCurrentItems() {
+    if (filteredResults.length === 0) {
+        alert("No items to verify.");
+        return;
+    }
+
+    const city = document.getElementById('citySelect').value;
+    const btn = document.querySelector('.refresh-btn');
+    const originalText = btn.innerHTML;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+
+    const itemsPayload = filteredResults.map(row => ({
+        startId: row.itemStart,
+        endId: row.itemEnd,
+        tier: row.tier,
+        quality: row.quality,
+        matCount: row.matCount || getMaterialCount_Helper(row.itemStart),
+        itemBase: row.itemBase,
+        qualityName: row.qualityName,
+        strategy: row.strategy,
+        upgradeDetails: row.upgradeDetails
+    }));
+
+    try {
+        const response = await fetch('/api/verify-items', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ city, items: itemsPayload })
+        });
+
+        const verifiedData = await response.json();
+        const removedCount = filteredResults.length - verifiedData.length;
+
+        allResults = verifiedData; 
+        applyFiltersAndSort(); 
+
+        alert(`Refresh complete!\n${removedCount} items removed (no longer profitable).`);
+
+    } catch (error) {
+        console.error("Verification failed:", error);
+        alert("Failed to refresh prices. Server error.");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+function getMaterialCount_Helper(id) {
+    if (id.includes('2H')) return 384;
+    if (id.includes('MAIN')) return 384; 
+    if (id.includes('ARMOR')) return 192; 
+    if (id.includes('HEAD') || id.includes('SHOES')) return 96; 
+    if (id.includes('OFF')) return 96; 
+    return 192; 
 }
 
 function getRowKey(row) {
@@ -166,39 +202,54 @@ function resetHidden() {
     }
 }
 
-function toggleSort() {
-    sortDescending = !sortDescending;
-    const icon = document.getElementById('sortIcon');
-    icon.className = sortDescending ? 'fas fa-sort-down' : 'fas fa-sort-up';
+// --- NEW SORT LOGIC ---
+function handleSort(column) {
+    // If clicking the same column, toggle order. If new column, set to High-to-Low
+    if (sortColumn === column) {
+        sortDescending = !sortDescending;
+    } else {
+        sortColumn = column;
+        sortDescending = true;
+    }
+    updateSortIcons();
     applyFiltersAndSort();
 }
 
+function updateSortIcons() {
+    const premIcon = document.getElementById('icon-profitPrem');
+    const nonPremIcon = document.getElementById('icon-profitNonPrem');
+
+    // Reset both to neutral gray
+    premIcon.className = 'fas fa-sort';
+    premIcon.style.color = '#444';
+    nonPremIcon.className = 'fas fa-sort';
+    nonPremIcon.style.color = '#444';
+
+    // Highlight Active
+    const activeIcon = (sortColumn === 'profitPrem') ? premIcon : nonPremIcon;
+    activeIcon.className = sortDescending ? 'fas fa-sort-down' : 'fas fa-sort-up';
+    activeIcon.style.color = '#00d2ff'; // Bright Blue
+}
+
 function applyFiltersAndSort() {
-    // 1. Get current Filter Value
     const filterType = document.getElementById('typeFilter').value;
 
-    // 2. Filter Logic
     filteredResults = allResults.filter(row => {
-        // A. Check Hidden
         if (hiddenItems.has(getRowKey(row))) return false;
-
-        // B. Check Type Filter
         if (filterType !== 'ALL') {
-            const type = getItemType(row.itemStart); // Use itemStart ID to determine type
+            const type = getItemType(row.itemStart);
             if (type !== filterType) return false;
         }
-        
         return true;
     });
 
-    // 3. Sort Logic
+    // Sort using the active sortColumn ('profitPrem' OR 'profitNonPrem')
     filteredResults.sort((a, b) => {
-        return sortDescending 
-            ? b.profitPrem - a.profitPrem 
-            : a.profitPrem - b.profitPrem;
+        const valA = a[sortColumn];
+        const valB = b[sortColumn];
+        return sortDescending ? valB - valA : valA - valB;
     });
 
-    // 4. Render
     const maxPage = Math.ceil(filteredResults.length / ITEMS_PER_PAGE) || 1;
     if (currentPage > maxPage) currentPage = maxPage;
     
@@ -212,7 +263,7 @@ function renderPage() {
     const nextBtn = document.getElementById('nextBtn');
 
     if (!filteredResults || filteredResults.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="empty-state" style="text-align:center; padding:20px;">No items match your filter.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="empty-state" style="text-align:center; padding:20px;">No items match your filter.</td></tr>';
         pageInfo.innerText = '0 items';
         return;
     }
@@ -283,7 +334,10 @@ function renderPage() {
                 <td><span class="strategy-badge">${row.strategy}</span></td>
                 <td><div class="materials-list">${materialHtml}</div></td>
                 <td class="cost-cell">${fmt(row.upgradeCost)}</td>
+                
                 <td class="profit-cell">${fmt(row.profitPrem)}</td>
+                <td class="profit-cell muted">${fmt(row.profitNonPrem)}</td>
+
                 <td style="text-align:center;">
                     <button class="hide-btn" onclick="hideItem(${index})" title="Hide Item">
                         <i class="fas fa-eye-slash"></i>
@@ -302,77 +356,4 @@ function renderPage() {
 function changePage(direction) {
     currentPage += direction;
     renderPage();
-}
-
-// Add this new function to public/app.js
-
-async function verifyCurrentItems() {
-    // 1. Get items to verify (use filteredResults to only check what user sees)
-    if (filteredResults.length === 0) {
-        alert("No items to verify.");
-        return;
-    }
-
-    const city = document.getElementById('citySelect').value;
-    const btn = document.querySelector('.refresh-btn');
-    const originalText = btn.innerHTML;
-
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
-
-    // 2. Prepare payload
-    // We need to send enough data for the server to reconstruct the trade
-    const itemsPayload = filteredResults.map(row => ({
-        startId: row.itemStart,
-        endId: row.itemEnd,
-        tier: row.tier,
-        quality: row.quality,
-        matCount: row.matCount || getMaterialCount_Helper(row.itemStart), // Need to ensure we have this
-        // Pass other UI fields so we don't lose them
-        itemBase: row.itemBase,
-        qualityName: row.qualityName,
-        strategy: row.strategy,
-        upgradeDetails: row.upgradeDetails
-    }));
-
-    try {
-        const response = await fetch('/api/verify-items', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ city, items: itemsPayload })
-        });
-
-        const verifiedData = await response.json();
-
-        // 3. Update State
-        // If an item is NOT in verifiedData, it means it was removed (not profitable)
-        const oldCount = filteredResults.length;
-        const newCount = verifiedData.length;
-        const removedCount = oldCount - newCount;
-
-        allResults = verifiedData; // Overwrite master list
-        
-        // Re-run filters to ensure sort/hide logic persists
-        applyFiltersAndSort(); 
-
-        alert(`Refresh complete!\n${removedCount} items disappeared (no longer profitable).\n${newCount} items updated.`);
-
-    } catch (error) {
-        console.error("Verification failed:", error);
-        alert("Failed to refresh prices. Server error.");
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-    }
-}
-
-// --- HELPER: We need to make sure we know matCount on frontend ---
-// Add this simple helper to app.js to guess mat count if missing
-function getMaterialCount_Helper(id) {
-    if (id.includes('2H')) return 384; // 2H Weapon
-    if (id.includes('MAIN')) return 384; // 1H (Most)
-    if (id.includes('ARMOR')) return 192; // Chest
-    if (id.includes('HEAD') || id.includes('SHOES')) return 96; // Head/Shoes
-    if (id.includes('OFF')) return 96; // Offhand
-    return 192; // Default fallback
 }
