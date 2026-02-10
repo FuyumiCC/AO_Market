@@ -191,6 +191,121 @@ app.get('/api/scan-category', async (req, res) => {
     }
 });
 
+// --- NEW ENDPOINT: Verify specific items ---
+app.post('/api/verify-items', async (req, res) => {
+    const { city, items } = req.body; // items = [{ startId, endId, tier, quality, matCount }, ...]
+
+    if (!city || !items || !Array.isArray(items)) {
+        return res.status(400).json({ error: "Invalid parameters" });
+    }
+
+    // 1. Identify which Tiers and IDs we need to check
+    const tiersToCheck = [...new Set(items.map(i => i.tier))];
+    const itemIdsToFetch = [];
+
+    items.forEach(item => {
+        // We need the price of what we buy (Start) and what we sell (End)
+        itemIdsToFetch.push(item.startId); 
+        itemIdsToFetch.push(item.endId);
+    });
+
+    try {
+        // 2. Fetch Fresh Material Prices (for the relevant tiers)
+        // We fetch materials for all tiers involved in the list
+        const matPromises = tiersToCheck.map(t => getAllMaterials(t, city));
+        const matResponses = await Promise.all(matPromises);
+        
+        const materialMap = {};
+        tiersToCheck.forEach((tier, index) => {
+            const data = matResponses[index] || [];
+            materialMap[tier] = {
+                RUNE: data.find(d => d.item_id.includes('RUNE'))?.sell_price_min || 9999999,
+                SOUL: data.find(d => d.item_id.includes('SOUL'))?.sell_price_min || 9999999,
+                RELIC: data.find(d => d.item_id.includes('RELIC'))?.sell_price_min || 9999999
+            };
+        });
+
+        // 3. Fetch Fresh Item Prices (Chunked)
+        const uniqueIds = [...new Set(itemIdsToFetch)];
+        const chunk = (arr, size) => Array.from({ length: Math.ceil(arr.length / size) }, (v, i) => arr.slice(i * size, i * size + size));
+        const idChunks = chunk(uniqueIds, 70); 
+        
+        let allItemData = [];
+        for (const ids of idChunks) {
+            const data = await getMarketData(ids.join(','), `${city},Black Market`);
+            if (data) allItemData = allItemData.concat(data);
+        }
+
+        // 4. Re-Verify Logic
+        const verifiedResults = [];
+
+        for (const item of items) {
+            const mats = materialMap[item.tier];
+            if (!mats) continue; // Should not happen
+
+            // Helper to get fresh price
+            const getPrice = (id, loc, quality, type) => {
+                const entry = allItemData.find(d => d.item_id === id && d.city === loc && d.quality === quality);
+                return entry ? (type === 'buy' ? entry.sell_price_min : entry.buy_price_max) : 0;
+            };
+
+            // Get Fresh Prices
+            const freshStartPrice = getPrice(item.startId, city, item.quality, 'buy');
+            const freshSellPrice = getPrice(item.endId, 'Black Market', item.quality, 'sell');
+
+            if (freshStartPrice <= 0 || freshSellPrice <= 0) continue; // Item gone or unavailable
+
+            // Re-calculate Material Cost based on the strategy
+            let freshUpgradeCost = 0;
+            const matCount = item.matCount; // We pass this from frontend now
+
+            // We infer needed mats based on strategy name or pass details. 
+            // Simple approach: Recalculate based on IDs.
+            // Check if IDs match direct flip or upgrade
+            
+            // Strategy: Direct Flip
+            if (item.startId === item.endId) {
+                freshUpgradeCost = 0;
+            } 
+            // Strategy: Upgrade
+            else {
+                // Determine step
+                const startTag = item.startId.includes('@') ? parseInt(item.startId.split('@')[1]) : 0;
+                const endTag = item.endId.includes('@') ? parseInt(item.endId.split('@')[1]) : 0;
+
+                // Simple cost logic (matches server scan logic)
+                if (startTag === 0 && endTag === 3) freshUpgradeCost = (mats.RUNE + mats.SOUL + mats.RELIC) * matCount;
+                else if (endTag === 1) freshUpgradeCost = mats.RUNE * matCount;
+                else if (endTag === 2) freshUpgradeCost = mats.SOUL * matCount;
+                else if (endTag === 3) freshUpgradeCost = mats.RELIC * matCount;
+            }
+
+            const totalCost = freshStartPrice + freshUpgradeCost;
+            const profitPrem = freshSellPrice - totalCost - (freshSellPrice * 0.04);
+            const profitNonPrem = freshSellPrice - totalCost - (freshSellPrice * 0.08);
+
+            // ONLY Keep if still profitable
+            if (profitPrem > 0) {
+                verifiedResults.push({
+                    ...item, // Keep old metadata (names, etc)
+                    startPrice: freshStartPrice,
+                    sellPrice: freshSellPrice,
+                    upgradeCost: freshUpgradeCost,
+                    profitPrem: Math.floor(profitPrem),
+                    profitNonPrem: Math.floor(profitNonPrem)
+                });
+            }
+        }
+
+        verifiedResults.sort((a, b) => b.profitPrem - a.profitPrem);
+        res.json(verifiedResults);
+
+    } catch (e) {
+        console.error("Verify Error:", e);
+        res.status(500).json({ error: "Failed to verify items" });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });

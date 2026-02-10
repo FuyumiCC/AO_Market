@@ -23,36 +23,62 @@
                 </select>
             </div>
 
-            <div class="control-group">
-                <label>Category</label>
-                <select id="categorySelect">
-                    <option value="1H_WEAPON">1H Weapon</option>
-                    <option value="2H_WEAPON">2H Weapon</option>
-                    <option value="ARMOR">Armor / Plate</option>
-                    <option value="OFF_HAND">Off-Hand</option>
+            <div class="button-group">
+                <button onclick="startBatchScan()" class="scan-btn">
+                    <i class="fas fa-search"></i> Scan All Markets
+                </button>
+                <button onclick="resetHidden()" class="reset-btn">
+                    <i class="fas fa-trash-restore"></i> Show Hidden
+                </button>
+            </div>
+        </div>
+
+        <div class="filters-toolbar">
+            <div class="filter-group">
+                <label><i class="fas fa-filter"></i> Filter by Type:</label>
+                <select id="typeFilter" onchange="applyFiltersAndSort()">
+                    <option value="ALL">Show All Items</option>
+                    <option value="Sword">Swords</option>
+                    <option value="Axe">Axes</option>
+                    <option value="Mace">Maces</option>
+                    <option value="Hammer">Hammers</option>
+                    <option value="Spear">Spears</option>
+                    <option value="Dagger">Daggers</option>
+                    <option value="Quarterstaff">Quarterstaffs</option>
+                    <option value="Bow">Bows</option>
+                    <option value="Crossbow">Crossbows</option>
+                    <option value="Cursed Staff">Cursed Staffs</option>
+                    <option value="Fire Staff">Fire Staffs</option>
+                    <option value="Frost Staff">Frost Staffs</option>
+                    <option value="Arcane Staff">Arcane Staffs</option>
+                    <option value="Holy Staff">Holy Staffs</option>
+                    <option value="Nature Staff">Nature Staffs</option>
+                    <option value="Plate Armor">Plate Armor</option>
+                    <option value="Leather Armor">Leather Armor</option>
+                    <option value="Cloth Armor">Cloth Armor</option>
+                    <option value="Off-Hand">Off-Hands</option>
                 </select>
             </div>
-
-            <button onclick="startScan()" class="scan-btn">
-                <i class="fas fa-search"></i> Analyze Market
-            </button>
         </div>
 
         <div class="table-wrapper">
             <table class="dark-table">
                 <thead>
                     <tr>
-                        <th style="width: 20%">Item Name</th>
+                        <th style="width: 25%">Item Name</th>
                         <th style="width: 10%">Buy At</th>
                         <th style="width: 10%">Sell At</th>
-                        <th style="width: 15%">Strategy</th>
-                        <th style="width: 20%">Materials Required</th> <th style="width: 10%">Total Upg. Cost</th>
-                        <th style="width: 10%">Profit (Prem)</th>
-                        <th style="width: 10%">Profit (No-Prem)</th>
+                        <th style="width: 10%">Strategy</th>
+                        <th style="width: 20%">Materials</th>
+                        <th style="width: 8%">Cost</th>
+                        <th style="width: 8%; cursor:pointer;" onclick="toggleSort()">
+                            Profit (Prem) <i class="fas fa-sort" id="sortIcon"></i>
+                        </th>
+                        <th style="width: 5%">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="resultsBody">
-                    <tr><td colspan="8" class="empty-state">Select a category and click Analyze</td></tr>
+                    <tr><td colspan="8" class="empty-state">Click "Scan All Markets" to begin.</td></tr>
                 </tbody>
             </table>
         </div>
