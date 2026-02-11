@@ -2,7 +2,7 @@
 
 A lightweight, web-based market analysis tool for **Albion Online**. This tool scans the data from the [Albion Data Project](https://www.albion-online-data.com/) to find profitable flipping and enchanting opportunities between Royal Cities and the Black Market.
 
-![Project Status](https://img.shields.io/badge/status-active-brightgreen) ![License](https://img.shields.io/badge/license-MIT-blue)
+![Project Status](https://img.shields.io/badge/status-passive-lightgrey) ![License](https://img.shields.io/badge/license-MIT-blue)
 
 ## 📖 What It Is
 The **Albion Market Scanner** is a Node.js application that acts as a real-time trading assistant. It calculates profit margins for two specific strategies:
