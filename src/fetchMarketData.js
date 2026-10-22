@@ -1,9 +1,11 @@
 // src/fetchMarketData.js
 const axios = require('axios');
 
+const BASE_URL = process.env.ALBION_API_URL || 'https://west.albion-online-data.com/api/v2/stats/prices';
+
 async function getMarketData(itemIds, locations) {
     // Fetch qualities 1-5 (Normal to Masterpiece)
-    const url = `${process.env.ALBION_API_URL}/${itemIds}?locations=${locations}&qualities=1,2,3,4,5`;
+    const url = `${BASE_URL}/${itemIds}?locations=${locations}&qualities=1,2,3,4,5`;
     try {
         const response = await axios.get(url, { timeout: 8000 });
         return response.data;
@@ -22,7 +24,7 @@ async function getAllMaterials(tier, city) {
         `T${tier}_SHARD_AVALONIAN`
     ].join(',');
 
-    const url = `${process.env.ALBION_API_URL}/${materials}?locations=${city}&qualities=1`;
+    const url = `${BASE_URL}/${materials}?locations=${city}&qualities=1`;
     
     try {
         const response = await axios.get(url, { timeout: 5000 });
