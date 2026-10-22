@@ -6,12 +6,70 @@ body {
     color: #e0e0e0;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     margin: 0;
-    padding: 20px;
+    padding: 0;
+}
+
+/* --- Custom Titlebar --- */
+.custom-titlebar {
+    height: 36px;
+    background: #1f1f1f;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #333;
+    -webkit-app-region: drag;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.titlebar-drag-region {
+    display: flex;
+    align-items: center;
+    padding-left: 15px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #ccc;
+    gap: 8px;
+    flex-grow: 1;
+    height: 100%;
+}
+
+.titlebar-controls {
+    display: flex;
+    height: 100%;
+    -webkit-app-region: no-drag;
+}
+
+.titlebar-btn {
+    background: transparent;
+    border: none;
+    color: #aaa;
+    width: 45px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    border-radius: 0;
+}
+
+.titlebar-btn:hover {
+    background: #333;
+    color: #fff;
+}
+
+.titlebar-btn.close:hover {
+    background: #e81123;
+    color: #fff;
 }
 
 .container {
     max-width: 1400px;
     margin: 0 auto;
+    padding: 20px;
 }
 
 /* --- 2. Control Panels --- */
