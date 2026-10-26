@@ -17,7 +17,23 @@ const SCAN_CATEGORIES = ['1H_WEAPON', '2H_WEAPON', 'ARMOR', 'OFF_HAND'];
 document.addEventListener('DOMContentLoaded', () => {
     loadItemDatabase();
     loadHiddenItems();
+    setupTitleBar();
 });
+
+function setupTitleBar() {
+    if (window.electronAPI) {
+        const minBtn = document.getElementById('min-btn');
+        const maxBtn = document.getElementById('max-btn');
+        const closeBtn = document.getElementById('close-btn');
+
+        if (minBtn) minBtn.addEventListener('click', () => window.electronAPI.minimize());
+        if (maxBtn) maxBtn.addEventListener('click', () => window.electronAPI.maximize());
+        if (closeBtn) closeBtn.addEventListener('click', () => window.electronAPI.close());
+    } else {
+        const controls = document.querySelector('.titlebar-controls');
+        if (controls) controls.style.display = 'none';
+    }
+}
 
 function getItemType(id) {
     const s = id.toUpperCase();
