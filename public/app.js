@@ -3,12 +3,12 @@
 let allResults = [];      
 let filteredResults = []; 
 let currentPage = 1;
-const ITEMS_PER_PAGE = 50; 
+let pageSize = 50;
 
 let itemLookup = {}; 
 
 // --- SORTING STATE ---
-let sortColumn = 'profitPrem'; // Default sort column
+let sortColumn = 'profitPrem'; // Default sort column ('profitPrem', 'profitNonPrem', 'roiPrem')
 let sortDescending = true;     // Default High-to-Low
 let hiddenItems = new Set(); 
 
@@ -61,7 +61,13 @@ function getItemType(id) {
 
 function loadHiddenItems() {
     const saved = localStorage.getItem('albionHiddenItems');
-    if (saved) hiddenItems = new Set(JSON.parse(saved));
+    if (saved) {
+        try {
+            hiddenItems = new Set(JSON.parse(saved));
+        } catch (e) {
+            hiddenItems = new Set();
+        }
+    }
 }
 
 function saveHiddenItems() {
@@ -69,8 +75,8 @@ function saveHiddenItems() {
 }
 
 async function loadItemDatabase() {
-    const statusText = document.querySelector('.empty-state');
-    if(statusText) statusText.innerText = "Loading Item Database...";
+    const statusText = document.getElementById('statusText');
+    if (statusText) statusText.innerText = "Loading Item Database...";
     try {
         const res = await fetch('https://raw.githubusercontent.com/ao-data/ao-bin-dumps/master/formatted/items.json');
         const items = await res.json();
@@ -79,10 +85,21 @@ async function loadItemDatabase() {
                 itemLookup[item.UniqueName] = item.LocalizedNames['EN-US'];
             }
         });
-        if(statusText) statusText.innerText = "Database Loaded. Click 'Scan All Markets' to begin.";
+        if (statusText) statusText.innerText = "Database Loaded";
     } catch (error) {
         console.error("Failed to load item names:", error);
+        if (statusText) statusText.innerText = "Database Error (Using Fallback Names)";
     }
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 
 function getRealName(id) {
@@ -103,24 +120,26 @@ async function startBatchScan() {
     const city = document.getElementById('citySelect').value;
     const tbody = document.getElementById('resultsBody');
     const btn = document.querySelector('.scan-btn');
-    
+    const progressWrapper = document.getElementById('progressWrapper');
+    const progressBar = document.getElementById('progressBar');
+    const progressLabel = document.getElementById('progressLabel');
+    const progressCount = document.getElementById('progressCount');
+
     allResults = []; 
     filteredResults = [];
     currentPage = 1;
     btn.disabled = true;
     
+    progressWrapper.classList.remove('hidden');
+    progressBar.style.width = '0%';
+
     try {
         for (let i = 0; i < SCAN_CATEGORIES.length; i++) {
             const cat = SCAN_CATEGORIES[i];
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="9" class="loading-text" style="text-align:center; padding:30px;">
-                        <i class="fas fa-spinner fa-spin"></i> 
-                        Scanning Category ${i + 1}/${SCAN_CATEGORIES.length}: <strong>${cat}</strong>...<br>
-                        <small>Found ${allResults.length} profitable items so far.</small>
-                    </td>
-                </tr>`;
-            btn.innerHTML = `<i class="fas fa-sync fa-spin"></i> Scanning ${i + 1}/${SCAN_CATEGORIES.length}...`;
+            const pct = Math.round(((i) / SCAN_CATEGORIES.length) * 100);
+            progressBar.style.width = `${pct}%`;
+            progressLabel.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Scanning category ${i + 1}/${SCAN_CATEGORIES.length}: <strong>${cat}</strong>`;
+            progressCount.innerText = `${allResults.length} deals found so far`;
 
             const response = await fetch(`/api/scan-category?city=${city}&category=${cat}`);
             const data = await response.json();
@@ -129,9 +148,19 @@ async function startBatchScan() {
                 allResults = allResults.concat(data);
             }
         }
+
+        progressBar.style.width = '100%';
+        progressLabel.innerHTML = `<i class="fas fa-check-circle"></i> Scan complete!`;
+        progressCount.innerText = `Found ${allResults.length} total deals`;
+
+        setTimeout(() => {
+            progressWrapper.classList.add('hidden');
+        }, 3000);
+
         applyFiltersAndSort(); 
     } catch (error) {
-        tbody.innerHTML = `<tr><td colspan="9" class="error-text" style="text-align:center; color:red;">Error: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" class="empty-state" style="color:var(--accent-red);">Error scanning market: ${escapeHtml(error.message)}</td></tr>`;
+        progressWrapper.classList.add('hidden');
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-search"></i> Scan All Markets';
@@ -201,7 +230,7 @@ function getRowKey(row) {
 }
 
 function hideItem(indexInPage) {
-    const realIndex = (currentPage - 1) * ITEMS_PER_PAGE + indexInPage;
+    const realIndex = (currentPage - 1) * pageSize + indexInPage;
     const row = filteredResults[realIndex];
     if (row) {
         hiddenItems.add(getRowKey(row));
@@ -211,16 +240,30 @@ function hideItem(indexInPage) {
 }
 
 function resetHidden() {
-    if(confirm("Show all hidden items?")) {
+    if (hiddenItems.size === 0) {
+        alert("No items are currently hidden.");
+        return;
+    }
+    if (confirm(`Show all ${hiddenItems.size} hidden items?`)) {
         hiddenItems.clear();
         saveHiddenItems();
         applyFiltersAndSort();
     }
 }
 
-// --- NEW SORT LOGIC ---
+function clearSearch() {
+    document.getElementById('searchInput').value = '';
+    applyFiltersAndSort();
+}
+
+function changePageSize() {
+    pageSize = parseInt(document.getElementById('pageSizeSelect').value, 10) || 50;
+    currentPage = 1;
+    renderPage();
+}
+
+// --- SORT LOGIC ---
 function handleSort(column) {
-    // If clicking the same column, toggle order. If new column, set to High-to-Low
     if (sortColumn === column) {
         sortDescending = !sortDescending;
     } else {
@@ -232,44 +275,97 @@ function handleSort(column) {
 }
 
 function updateSortIcons() {
-    const premIcon = document.getElementById('icon-profitPrem');
-    const nonPremIcon = document.getElementById('icon-profitNonPrem');
-
-    // Reset both to neutral gray
-    premIcon.className = 'fas fa-sort';
-    premIcon.style.color = '#444';
-    nonPremIcon.className = 'fas fa-sort';
-    nonPremIcon.style.color = '#444';
-
-    // Highlight Active
-    const activeIcon = (sortColumn === 'profitPrem') ? premIcon : nonPremIcon;
-    activeIcon.className = sortDescending ? 'fas fa-sort-down' : 'fas fa-sort-up';
-    activeIcon.style.color = '#00d2ff'; // Bright Blue
+    const columns = ['profitPrem', 'profitNonPrem', 'roiPrem'];
+    columns.forEach(col => {
+        const icon = document.getElementById(`icon-${col}`);
+        if (!icon) return;
+        if (sortColumn === col) {
+            icon.className = sortDescending ? 'fas fa-sort-down' : 'fas fa-sort-up';
+            icon.style.color = 'var(--accent-cyan)';
+        } else {
+            icon.className = 'fas fa-sort';
+            icon.style.color = 'var(--text-muted)';
+        }
+    });
 }
 
 function applyFiltersAndSort() {
     const filterType = document.getElementById('typeFilter').value;
+    const filterTier = document.getElementById('tierFilter').value;
+    const filterMinProfit = parseInt(document.getElementById('minProfitFilter').value, 10) || 0;
+    const searchQuery = document.getElementById('searchInput').value.trim().toLowerCase();
+
+    // Calculate ROI for all results
+    allResults.forEach(row => {
+        const totalInputCost = (row.startPrice || 0) + (row.upgradeCost || 0);
+        row.totalCost = totalInputCost;
+        row.roiPrem = totalInputCost > 0 ? (row.profitPrem / totalInputCost) * 100 : 0;
+        row.roiNonPrem = totalInputCost > 0 ? (row.profitNonPrem / totalInputCost) * 100 : 0;
+    });
 
     filteredResults = allResults.filter(row => {
         if (hiddenItems.has(getRowKey(row))) return false;
+
+        // Tier Filter
+        if (filterTier !== 'ALL' && parseInt(row.tier, 10) !== parseInt(filterTier, 10)) {
+            return false;
+        }
+
+        // Category / Type Filter
         if (filterType !== 'ALL') {
             const type = getItemType(row.itemStart);
             if (type !== filterType) return false;
         }
+
+        // Min Profit Filter
+        if (row.profitPrem < filterMinProfit) {
+            return false;
+        }
+
+        // Search Query Filter
+        if (searchQuery.length > 0) {
+            const nameStart = getRealName(row.itemStart).toLowerCase();
+            const nameEnd = getRealName(row.itemEnd).toLowerCase();
+            const strat = row.strategy.toLowerCase();
+            if (!nameStart.includes(searchQuery) && !nameEnd.includes(searchQuery) && !strat.includes(searchQuery)) {
+                return false;
+            }
+        }
+
         return true;
     });
 
-    // Sort using the active sortColumn ('profitPrem' OR 'profitNonPrem')
+    // Sort using active column
     filteredResults.sort((a, b) => {
-        const valA = a[sortColumn];
-        const valB = b[sortColumn];
+        const valA = a[sortColumn] !== undefined ? a[sortColumn] : 0;
+        const valB = b[sortColumn] !== undefined ? b[sortColumn] : 0;
         return sortDescending ? valB - valA : valA - valB;
     });
 
-    const maxPage = Math.ceil(filteredResults.length / ITEMS_PER_PAGE) || 1;
+    const maxPage = Math.ceil(filteredResults.length / pageSize) || 1;
     if (currentPage > maxPage) currentPage = maxPage;
     
+    updateSummaryPills();
     renderPage();
+}
+
+function updateSummaryPills() {
+    const pillsContainer = document.getElementById('summaryPills');
+    if (!pillsContainer) return;
+
+    const filterType = document.getElementById('typeFilter').value;
+    const filterTier = document.getElementById('tierFilter').value;
+    const filterMinProfit = parseInt(document.getElementById('minProfitFilter').value, 10) || 0;
+    const searchQuery = document.getElementById('searchInput').value.trim();
+
+    let pills = [];
+    if (searchQuery) pills.push(`Search: "${escapeHtml(searchQuery)}"`);
+    if (filterType !== 'ALL') pills.push(`Category: ${escapeHtml(filterType)}`);
+    if (filterTier !== 'ALL') pills.push(`Tier ${escapeHtml(filterTier)}`);
+    if (filterMinProfit > 0) pills.push(`Min Profit: $${filterMinProfit.toLocaleString()}`);
+    if (hiddenItems.size > 0) pills.push(`Hidden: ${hiddenItems.size}`);
+
+    pillsContainer.innerHTML = pills.map(p => `<span class="pill">${p}</span>`).join('');
 }
 
 function renderPage() {
@@ -277,94 +373,107 @@ function renderPage() {
     const pageInfo = document.getElementById('pageInfo');
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
+    const summaryRange = document.getElementById('summaryRange');
+    const summaryTotal = document.getElementById('summaryTotal');
 
     if (!filteredResults || filteredResults.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="empty-state" style="text-align:center; padding:20px;">No items match your filter.</td></tr>';
-        pageInfo.innerText = '0 items';
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="11" class="empty-state">
+                    <i class="fas fa-search-minus empty-icon"></i>
+                    <p>No deals match your active filters.</p>
+                </td>
+            </tr>`;
+        pageInfo.innerText = 'Page 0 of 0';
+        summaryRange.innerText = '0-0';
+        summaryTotal.innerText = '0';
+        prevBtn.disabled = true;
+        nextBtn.disabled = true;
         return;
     }
 
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    const end = start + ITEMS_PER_PAGE;
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
     const pageData = filteredResults.slice(start, end);
+    const totalPages = Math.ceil(filteredResults.length / pageSize);
 
-    tbody.innerHTML = '';
-
-    pageData.forEach((row, index) => {
-        const fmt = (num) => num ? num.toLocaleString() : '0';
-        const nameStart = getRealName(row.itemStart);
-        const nameEnd = getRealName(row.itemEnd);
-        const tagStart = `[${row.tier}${getEnchantTag(row.itemStart)}]`;
-        const tagEnd = `[${row.tier}${getEnchantTag(row.itemEnd)}]`;
-
-        let qClass = 'q-normal';
-        if(row.quality === 2) qClass = 'q-good';
-        if(row.quality === 3) qClass = 'q-outstanding';
-        if(row.quality === 4) qClass = 'q-excellent';
-        if(row.quality === 5) qClass = 'q-masterpiece';
+    const rowsHtml = pageData.map((row, index) => {
+        const fmt = (num) => num !== undefined && num !== null ? Math.round(num).toLocaleString() : '0';
+        const nameStart = escapeHtml(getRealName(row.itemStart));
+        const nameEnd = escapeHtml(getRealName(row.itemEnd));
+        const tagStart = `T${row.tier}${getEnchantTag(row.itemStart)}`;
+        const tagEnd = `T${row.tier}${getEnchantTag(row.itemEnd)}`;
 
         let itemDisplayHtml = '';
         if (row.itemStart === row.itemEnd) {
             itemDisplayHtml = `
                 <div class="item-stack">
                     <div class="item-row target">
-                        <span class="tier-tag highlight">${tagStart}</span>
+                        <span class="tier-badge highlight">${tagStart}</span>
                         <span class="item-name highlight">${nameStart}</span>
                     </div>
-                    <div class="quality-row"><span class="quality-badge ${qClass}">${row.qualityName}</span></div>
+                    <div><span class="quality-badge q-${row.quality}">${escapeHtml(row.qualityName)}</span></div>
                 </div>`;
         } else {
             itemDisplayHtml = `
                 <div class="item-stack">
                     <div class="item-row">
-                        <span class="tier-tag">${tagStart}</span>
+                        <span class="tier-badge">${tagStart}</span>
                         <span class="item-name">${nameStart}</span>
                     </div>
-                    <div class="quality-row"><span class="quality-badge ${qClass}">${row.qualityName}</span></div>
+                    <div><span class="quality-badge q-${row.quality}">${escapeHtml(row.qualityName)}</span></div>
                     <i class="fas fa-arrow-down arrow-icon"></i>
                     <div class="item-row target">
-                        <span class="tier-tag highlight">${tagEnd}</span>
+                        <span class="tier-badge highlight">${tagEnd}</span>
                         <span class="item-name highlight">${nameEnd}</span>
                     </div>
                 </div>`;
         }
 
         let materialHtml = '';
-        if (row.upgradeDetails.length === 0) {
-             materialHtml = '<span style="color:#666; font-size:0.8rem;">None</span>';
+        if (!row.upgradeDetails || row.upgradeDetails.length === 0) {
+             materialHtml = '<span style="color:var(--text-muted); font-size:0.8rem;">None</span>';
         } else {
             row.upgradeDetails.forEach(mat => {
                 materialHtml += `
-                    <div class="mat-row-detail">
-                        <span class="mat-name">${mat.count} x ${mat.name}:</span>
+                    <div class="mat-item">
+                        <span>${mat.count}x ${escapeHtml(mat.name)}</span>
                         <span class="mat-cost">$${fmt(mat.count * mat.price)}</span>
                     </div>`;
             });
         }
 
-        const html = `
+        const roiVal = row.roiPrem || 0;
+        let roiClass = 'roi-low';
+        if (roiVal >= 30) roiClass = 'roi-high';
+        else if (roiVal >= 15) roiClass = 'roi-med';
+
+        return `
             <tr>
                 <td>${itemDisplayHtml}</td>
-                <td><div class="price-block"><span class="price">${fmt(row.startPrice)}</span></div></td>
-                <td><div class="price-block"><span class="price warning">${fmt(row.sellPrice)}</span></div></td>
-                <td><span class="strategy-badge">${row.strategy}</span></td>
+                <td><span class="price-val">${fmt(row.startPrice)}</span></td>
+                <td><span class="cost-val">${fmt(row.upgradeCost)}</span></td>
+                <td><span class="price-val" style="font-weight:600;">${fmt(row.totalCost)}</span></td>
+                <td><span class="price-val sell">${fmt(row.sellPrice)}</span></td>
+                <td><span class="strategy-tag">${escapeHtml(row.strategy)}</span></td>
                 <td><div class="materials-list">${materialHtml}</div></td>
-                <td class="cost-cell">${fmt(row.upgradeCost)}</td>
-                
-                <td class="profit-cell">${fmt(row.profitPrem)}</td>
-                <td class="profit-cell muted">${fmt(row.profitNonPrem)}</td>
-
+                <td><span class="roi-badge ${roiClass}">${roiVal.toFixed(1)}%</span></td>
+                <td><span class="profit-val">$${fmt(row.profitPrem)}</span></td>
+                <td><span class="profit-val muted">$${fmt(row.profitNonPrem)}</span></td>
                 <td style="text-align:center;">
-                    <button class="hide-btn" onclick="hideItem(${index})" title="Hide Item">
+                    <button class="hide-btn" onclick="hideItem(${index})" title="Hide item">
                         <i class="fas fa-eye-slash"></i>
                     </button>
                 </td>
             </tr>
         `;
-        tbody.innerHTML += html;
     });
 
-    pageInfo.innerText = `Showing ${start + 1}-${Math.min(end, filteredResults.length)} of ${filteredResults.length}`;
+    tbody.innerHTML = rowsHtml.join('');
+
+    summaryRange.innerText = `${start + 1}-${Math.min(end, filteredResults.length)}`;
+    summaryTotal.innerText = filteredResults.length.toLocaleString();
+    pageInfo.innerText = `Page ${currentPage} of ${totalPages}`;
     prevBtn.disabled = currentPage === 1;
     nextBtn.disabled = end >= filteredResults.length;
 }
