@@ -58,14 +58,20 @@ app.get('/api/scan-category', async (req, res) => {
             });
         });
 
-        // 3. Fetch Items
+        // 3. Fetch Items in parallel chunks
         const chunk = (arr, size) => Array.from({ length: Math.ceil(arr.length / size) }, (v, i) => arr.slice(i * size, i * size + size));
         const idChunks = chunk(itemIdsToFetch, 70); 
         
-        let allItemData = [];
-        for (const ids of idChunks) {
-            const data = await getMarketData(ids.join(','), `${city},Black Market`);
-            if (data) allItemData = allItemData.concat(data);
+        const chunkPromises = idChunks.map(ids => getMarketData(ids.join(','), `${city},Black Market`));
+        const chunkResults = await Promise.all(chunkPromises);
+        let allItemData = chunkResults.flat().filter(Boolean);
+
+        // Build fast O(1) Lookup Map: `${item_id}_${city}_${quality}`
+        const priceMap = new Map();
+        for (const entry of allItemData) {
+            if (entry && entry.item_id && entry.city && entry.quality) {
+                priceMap.set(`${entry.item_id}_${entry.city}_${entry.quality}`, entry);
+            }
         }
 
         // 4. Analysis Loop
@@ -87,7 +93,7 @@ app.get('/api/scan-category', async (req, res) => {
 
                 for (let q = 1; q <= 5; q++) {
                     const getPrice = (id, loc, type) => {
-                        const entry = allItemData.find(d => d.item_id === id && d.city === loc && d.quality === q);
+                        const entry = priceMap.get(`${id}_${loc}_${q}`);
                         return entry ? (type === 'buy' ? entry.sell_price_min : entry.buy_price_max) : 0;
                     };
 
@@ -225,15 +231,21 @@ app.post('/api/verify-items', async (req, res) => {
             };
         });
 
-        // 3. Fetch Fresh Item Prices (Chunked)
+        // 3. Fetch Fresh Item Prices in parallel chunks
         const uniqueIds = [...new Set(itemIdsToFetch)];
         const chunk = (arr, size) => Array.from({ length: Math.ceil(arr.length / size) }, (v, i) => arr.slice(i * size, i * size + size));
         const idChunks = chunk(uniqueIds, 70); 
         
-        let allItemData = [];
-        for (const ids of idChunks) {
-            const data = await getMarketData(ids.join(','), `${city},Black Market`);
-            if (data) allItemData = allItemData.concat(data);
+        const chunkPromises = idChunks.map(ids => getMarketData(ids.join(','), `${city},Black Market`));
+        const chunkResults = await Promise.all(chunkPromises);
+        let allItemData = chunkResults.flat().filter(Boolean);
+
+        // Build fast O(1) Lookup Map: `${item_id}_${city}_${quality}`
+        const priceMap = new Map();
+        for (const entry of allItemData) {
+            if (entry && entry.item_id && entry.city && entry.quality) {
+                priceMap.set(`${entry.item_id}_${entry.city}_${entry.quality}`, entry);
+            }
         }
 
         // 4. Re-Verify Logic
@@ -245,7 +257,7 @@ app.post('/api/verify-items', async (req, res) => {
 
             // Helper to get fresh price
             const getPrice = (id, loc, quality, type) => {
-                const entry = allItemData.find(d => d.item_id === id && d.city === loc && d.quality === quality);
+                const entry = priceMap.get(`${id}_${loc}_${quality}`);
                 return entry ? (type === 'buy' ? entry.sell_price_min : entry.buy_price_max) : 0;
             };
 

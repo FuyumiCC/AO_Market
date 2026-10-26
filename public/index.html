@@ -3,102 +3,207 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Albion Market Scanner</title>
+    <title>Albion Market Scanner & Profit Calculator</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
+    <div class="app-container">
         
-        <div class="scanner-controls">
-            <div class="control-group">
-                <label>Buy City</label>
-                <select id="citySelect">
-                    <option value="Martlock">Martlock</option>
-                    <option value="Bridgewatch">Bridgewatch</option>
-                    <option value="Lymhurst">Lymhurst</option>
-                    <option value="Fort Sterling">Fort Sterling</option>
-                    <option value="Thetford">Thetford</option>
-                    <option value="Caerleon">Caerleon</option>
-                </select>
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-brand">
+                <i class="fas fa-coins brand-icon"></i>
+                <div>
+                    <h1>Albion Market Scanner</h1>
+                    <p class="subtitle">Black Market Arbitrage & Enchantment Profit Assistant</p>
+                </div>
+            </div>
+            <div class="header-status" id="headerStatus">
+                <span class="status-dot"></span> <span id="statusText">Database Loaded</span>
+            </div>
+        </header>
+
+        <!-- Scanner Controls Bar -->
+        <section class="panel scanner-panel">
+            <div class="control-grid">
+                <div class="control-item">
+                    <label for="citySelect"><i class="fas fa-city"></i> Purchase City</label>
+                    <select id="citySelect" class="styled-select">
+                        <option value="Martlock">Martlock</option>
+                        <option value="Bridgewatch">Bridgewatch</option>
+                        <option value="Lymhurst">Lymhurst</option>
+                        <option value="Fort Sterling">Fort Sterling</option>
+                        <option value="Thetford">Thetford</option>
+                        <option value="Caerleon">Caerleon</option>
+                    </select>
+                </div>
+
+                <div class="control-actions">
+                    <button onclick="startBatchScan()" class="btn btn-primary scan-btn">
+                        <i class="fas fa-search"></i> Scan All Markets
+                    </button>
+                    <button onclick="verifyCurrentItems()" class="btn btn-accent refresh-btn">
+                        <i class="fas fa-sync-alt"></i> Refresh Prices
+                    </button>
+                    <button onclick="resetHidden()" class="btn btn-secondary reset-btn" title="Restore hidden items">
+                        <i class="fas fa-eye"></i> Show Hidden
+                    </button>
+                </div>
             </div>
 
-            <div class="button-group">
-                <button onclick="startBatchScan()" class="scan-btn">
-                    <i class="fas fa-search"></i> Scan All Markets
-                </button>
-                <button onclick="verifyCurrentItems()" class="refresh-btn">
-                    <i class="fas fa-sync-alt"></i> Refresh Prices
-                </button>
-                <button onclick="resetHidden()" class="reset-btn">
-                    <i class="fas fa-trash-restore"></i> Show Hidden
-                </button>
+            <!-- Progress Bar -->
+            <div id="progressWrapper" class="progress-wrapper hidden">
+                <div class="progress-info">
+                    <span id="progressLabel"><i class="fas fa-spinner fa-spin"></i> Scanning category...</span>
+                    <span id="progressCount">0 found</span>
+                </div>
+                <div class="progress-track">
+                    <div id="progressBar" class="progress-fill" style="width: 0%;"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Filters & Search Toolbar -->
+        <section class="panel filters-panel">
+            <div class="filters-grid">
+
+                <!-- Search Input -->
+                <div class="filter-item search-item">
+                    <label for="searchInput"><i class="fas fa-search"></i> Search Item</label>
+                    <div class="search-input-wrapper">
+                        <input type="text" id="searchInput" placeholder="e.g. Sword, Bow, Claw..." oninput="applyFiltersAndSort()">
+                        <button class="clear-search-btn" onclick="clearSearch()" title="Clear search"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+
+                <!-- Type Filter -->
+                <div class="filter-item">
+                    <label for="typeFilter"><i class="fas fa-layer-group"></i> Category</label>
+                    <select id="typeFilter" class="styled-select" onchange="applyFiltersAndSort()">
+                        <option value="ALL">All Categories</option>
+                        <option value="Sword">Swords</option>
+                        <option value="Axe">Axes</option>
+                        <option value="Mace">Maces</option>
+                        <option value="Hammer">Hammers</option>
+                        <option value="Spear">Spears</option>
+                        <option value="Dagger">Daggers</option>
+                        <option value="Quarterstaff">Quarterstaffs</option>
+                        <option value="Bow">Bows</option>
+                        <option value="Crossbow">Crossbows</option>
+                        <option value="Cursed Staff">Cursed Staffs</option>
+                        <option value="Fire Staff">Fire Staffs</option>
+                        <option value="Frost Staff">Frost Staffs</option>
+                        <option value="Arcane Staff">Arcane Staffs</option>
+                        <option value="Holy Staff">Holy Staffs</option>
+                        <option value="Nature Staff">Nature Staffs</option>
+                        <option value="Plate Armor">Plate Armor</option>
+                        <option value="Leather Armor">Leather Armor</option>
+                        <option value="Cloth Armor">Cloth Armor</option>
+                        <option value="Off-Hand">Off-Hands</option>
+                    </select>
+                </div>
+
+                <!-- Tier Filter -->
+                <div class="filter-item">
+                    <label for="tierFilter"><i class="fas fa-shield-alt"></i> Tier</label>
+                    <select id="tierFilter" class="styled-select" onchange="applyFiltersAndSort()">
+                        <option value="ALL">All Tiers</option>
+                        <option value="4">Tier 4</option>
+                        <option value="5">Tier 5</option>
+                        <option value="6">Tier 6</option>
+                        <option value="7">Tier 7</option>
+                        <option value="8">Tier 8</option>
+                    </select>
+                </div>
+
+                <!-- Min Profit Filter -->
+                <div class="filter-item">
+                    <label for="minProfitFilter"><i class="fas fa-dollar-sign"></i> Min Profit</label>
+                    <select id="minProfitFilter" class="styled-select" onchange="applyFiltersAndSort()">
+                        <option value="0">Any Profit (> 0)</option>
+                        <option value="10000">10,000+ Silver</option>
+                        <option value="50000">50,000+ Silver</option>
+                        <option value="100000">100,000+ Silver</option>
+                        <option value="250000">250,000+ Silver</option>
+                        <option value="500000">500,000+ Silver</option>
+                    </select>
+                </div>
+
+                <!-- Page Size -->
+                <div class="filter-item small-item">
+                    <label for="pageSizeSelect"><i class="fas fa-list-ol"></i> Rows</label>
+                    <select id="pageSizeSelect" class="styled-select" onchange="changePageSize()">
+                        <option value="25">25</option>
+                        <option value="50" selected>50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Summary Bar -->
+        <div class="summary-bar">
+            <div class="summary-count">
+                Showing <strong id="summaryRange">0-0</strong> of <strong id="summaryTotal">0</strong> deals
+            </div>
+            <div class="summary-pills" id="summaryPills">
+                <!-- Dynamic active filter tags -->
             </div>
         </div>
 
-        <div class="filters-toolbar">
-            <div class="filter-group">
-                <label><i class="fas fa-filter"></i> Filter by Type:</label>
-                <select id="typeFilter" onchange="applyFiltersAndSort()">
-                    <option value="ALL">Show All Items</option>
-                    <option value="Sword">Swords</option>
-                    <option value="Axe">Axes</option>
-                    <option value="Mace">Maces</option>
-                    <option value="Hammer">Hammers</option>
-                    <option value="Spear">Spears</option>
-                    <option value="Dagger">Daggers</option>
-                    <option value="Quarterstaff">Quarterstaffs</option>
-                    <option value="Bow">Bows</option>
-                    <option value="Crossbow">Crossbows</option>
-                    <option value="Cursed Staff">Cursed Staffs</option>
-                    <option value="Fire Staff">Fire Staffs</option>
-                    <option value="Frost Staff">Frost Staffs</option>
-                    <option value="Arcane Staff">Arcane Staffs</option>
-                    <option value="Holy Staff">Holy Staffs</option>
-                    <option value="Nature Staff">Nature Staffs</option>
-                    <option value="Plate Armor">Plate Armor</option>
-                    <option value="Leather Armor">Leather Armor</option>
-                    <option value="Cloth Armor">Cloth Armor</option>
-                    <option value="Off-Hand">Off-Hands</option>
-                </select>
-            </div>
-        </div>
-
+        <!-- Table Container -->
         <div class="table-wrapper">
             <table class="dark-table">
                 <thead>
                     <tr>
-                        <th style="width: 25%">Item Name</th>
+                        <th style="width: 22%">Item Name</th>
                         <th style="width: 9%">Buy At</th>
-                        <th style="width: 9%">Sell At</th>
-                        <th style="width: 10%">Strategy</th>
-                        <th style="width: 17%">Materials</th>
-                        <th style="width: 8%">Cost</th>
-                        
-                        <th style="width: 9%; cursor:pointer;" onclick="handleSort('profitPrem')">
+                        <th style="width: 9%">Upg. Cost</th>
+                        <th style="width: 10%">Total Cost</th>
+                        <th style="width: 9%">Sell At (BM)</th>
+                        <th style="width: 11%">Strategy</th>
+                        <th style="width: 12%">Materials</th>
+                        <th style="width: 6%; cursor:pointer;" onclick="handleSort('roiPrem')" title="Sort by Return on Investment">
+                            ROI % <i class="fas fa-sort" id="icon-roiPrem"></i>
+                        </th>
+                        <th style="width: 8%; cursor:pointer;" onclick="handleSort('profitPrem')" title="Sort by Premium Profit">
                             Profit (Prem) <i class="fas fa-sort-down" id="icon-profitPrem"></i>
                         </th>
-                        
-                        <th style="width: 9%; cursor:pointer;" onclick="handleSort('profitNonPrem')">
-                            Profit (No-Prem) <i class="fas fa-sort" id="icon-profitNonPrem" style="color: #444;"></i>
+                        <th style="width: 8%; cursor:pointer;" onclick="handleSort('profitNonPrem')" title="Sort by Non-Premium Profit">
+                            Profit (No-Prem) <i class="fas fa-sort" id="icon-profitNonPrem"></i>
                         </th>
-
-                        <th style="width: 4%">Actions</th>
+                        <th style="width: 4%; text-align: center;">Hide</th>
                     </tr>
                 </thead>
                 <tbody id="resultsBody">
-                    <tr><td colspan="9" class="empty-state">Click "Scan All Markets" to begin.</td></tr>
+                    <tr>
+                        <td colspan="11" class="empty-state">
+                            <i class="fas fa-compass empty-icon"></i>
+                            <p>Click "<strong>Scan All Markets</strong>" to search for profitable flips.</p>
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
 
-        <div class="pagination">
-            <span id="pageInfo">Showing 0-0 of 0</span>
+        <!-- Pagination Controls -->
+        <footer class="pagination-footer">
+            <span id="pageInfo">Page 1 of 1</span>
             <div class="page-buttons">
-                <button onclick="changePage(-1)" id="prevBtn" disabled>Previous</button>
-                <button onclick="changePage(1)" id="nextBtn" disabled>Next</button>
+                <button onclick="changePage(-1)" id="prevBtn" class="btn btn-secondary" disabled>
+                    <i class="fas fa-chevron-left"></i> Previous
+                </button>
+                <button onclick="changePage(1)" id="nextBtn" class="btn btn-secondary" disabled>
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
             </div>
-        </div>
+        </footer>
+
     </div>
 
     <script src="app.js"></script>
